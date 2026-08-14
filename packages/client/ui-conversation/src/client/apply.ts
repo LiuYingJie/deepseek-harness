@@ -296,6 +296,7 @@ export function apply(ctx: Context): void {
             submissionPolicy.resolve(running, gesture, steeringAvailable),
           toggleCommandMenu: undefined,
           stop: undefined,
+          halt: undefined,
           command: undefined,
           hooks: { notices: ABSENT_NOTICES, lexicon: ABSENT_LEXICON, menuLauncher: ABSENT_MENU_LAUNCHER },
         }
@@ -343,6 +344,11 @@ export function apply(ctx: Context): void {
         stop: () => {
           scopedConversation(sessions, sessionId).cancel().catch(() => {
             // Stop failure surfaces via snapshot.promptError; nothing to restore.
+          })
+        },
+        halt: () => {
+          scopedConversation(sessions, sessionId).halt().catch(() => {
+            // Halt failure surfaces via snapshot.promptError; nothing to restore.
           })
         },
         command: async (line) => {

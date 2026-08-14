@@ -52,6 +52,12 @@ export interface IConversation {
    */
   cancel(): Promise<void>
   /**
+   * Halt the scoped ordinary session: clear the Queue, stop owned background
+   * jobs, and drain continuable descendants. Addressed subagents keep `cancel()`.
+   * @returns completion; failures reject as in send.
+   */
+  halt(): Promise<void>
+  /**
    * Pull one older history page for the scoped session.
    * @returns completion of the page pull.
    */
@@ -280,6 +286,13 @@ export class ConversationController extends Service implements IConversation {
     const session = this.scopedSession('cancel')
     const result = await session.cancel()
     if (!result.ok) throw new Error(`conversation.cancel failed: ${result.error.code}: ${result.error.message}`)
+  }
+
+  /** Halt the scoped ordinary session: clear Queue, stop owned jobs, drain descendants. */
+  async halt(): Promise<void> {
+    const session = this.scopedSession('halt')
+    const result = await session.cancel('all')
+    if (!result.ok) throw new Error(`conversation.halt failed: ${result.error.code}: ${result.error.message}`)
   }
 
   /** Pull one older history page for the scoped Session. */

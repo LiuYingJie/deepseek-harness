@@ -43,10 +43,13 @@ describe('ConversationController', () => {
     await b.scoped.send('hello')
     await b.scoped.updateQueue('item-1' as never, { kind: 'remove' })
     await b.scoped.cancel()
+    await b.scoped.halt()
     await b.scoped.loadOlder()
     expect(b.prompt).toHaveBeenCalledWith([{ type: 'text', text: 'hello' }], 'queue')
     expect(b.updateQueue).toHaveBeenCalledWith('item-1', { kind: 'remove' })
-    expect(b.cancel).toHaveBeenCalledOnce()
+    expect(b.cancel).toHaveBeenCalledTimes(2)
+    expect(b.cancel).toHaveBeenNthCalledWith(1)
+    expect(b.cancel).toHaveBeenNthCalledWith(2, 'all')
     expect(b.loadOlder).toHaveBeenCalledOnce()
     await b.runtime.dispose()
   })
@@ -57,6 +60,8 @@ describe('ConversationController', () => {
     await expect(b.scoped.send('x')).rejects.toThrow('conversation.send failed: agent-busy: busy')
     b.cancel.mockResolvedValueOnce({ ok: false, error: { code: 'internal', message: 'nope', details: {} } } as never)
     await expect(b.scoped.cancel()).rejects.toThrow('conversation.cancel failed: internal: nope')
+    b.cancel.mockResolvedValueOnce({ ok: false, error: { code: 'internal', message: 'nope', details: {} } } as never)
+    await expect(b.scoped.halt()).rejects.toThrow('conversation.halt failed: internal: nope')
     b.updateQueue.mockResolvedValueOnce({
       ok: false, error: { code: 'internal', message: 'broken', details: {} },
     } as never)

@@ -562,6 +562,16 @@ describe('prompt and cancel errors', () => {
     expect(session.getSnapshot().promptError).toMatchObject({ op: 'stop', error: { code: 'internal' } })
   })
 
+  it('sends scope all only when halt is requested', async () => {
+    const { api, session } = makeSession()
+    expect(await session.cancel()).toEqual({ ok: true, value: { accepted: true } })
+    expect(await session.cancel('all')).toEqual({ ok: true, value: { accepted: true } })
+    expect(api.callsOf('session.cancel')).toEqual([
+      { sessionId: SID },
+      { sessionId: SID, scope: 'all' },
+    ])
+  })
+
   it('reads session-authorized attachment bytes and keeps the opaque id on the wire', async () => {
     const { api, session } = makeSession()
     const result = await session.readAttachment('attachment-1' as never)

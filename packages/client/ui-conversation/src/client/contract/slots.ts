@@ -509,6 +509,8 @@ export interface ComposerBarInjected {
   toggleCommandMenu: ((selection: EditSelection) => void) | undefined
   /** Cancel the in-flight turn; absent with the session. */
   stop: (() => void) | undefined
+  /** Halt the ordinary session tree; absent with the session or an addressed child. */
+  halt: (() => void) | undefined
   /**
    * Submit one slash-command line against this session's agent (the chrome
    * controls' write path — the permission chip submits `/permission <preset>`);

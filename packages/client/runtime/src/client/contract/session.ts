@@ -55,11 +55,15 @@ export interface ISession {
    */
   updateQueue(itemId: MessageId, action: QueueAction): Promise<RpcResult<{ accepted: true }>>
   /**
-   * Cancel the running turn. Pending queued work remains and resumes in FIFO
-   * order after the Host reaches cancellation quiescence.
+   * Cancel the running turn, or halt the whole session tree.
+   * Pending queued work remains and resumes in FIFO order after a `'turn'`
+   * cancel reaches Host cancellation quiescence. `'all'` clears the queue,
+   * stops owned background jobs, and drains continuable descendants.
+   * @param scope - `'turn'` (default) aborts only the active generation;
+   *   `'all'` stops the session and its descendants.
    * @returns acceptance, or the business error.
    */
-  cancel(): Promise<RpcResult<{ accepted: true }>>
+  cancel(scope?: 'turn' | 'all'): Promise<RpcResult<{ accepted: true }>>
   /**
    * Rename this session (explicit user title; pins it against automatic
    * regeneration).

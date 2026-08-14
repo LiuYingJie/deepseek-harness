@@ -12,7 +12,7 @@ import {
 } from '@deepseek-ai/dsh-client-runtime/client'
 import { makeTranslate } from '@deepseek-ai/dsh-client-test-runtime'
 import { zh as commonZh } from '@deepseek-ai/dsh-client-locale/src/locales/zh.ts'
-import type { ClientContext, ConversationSnapshot, SessionId } from '@deepseek-ai/dsh-client-runtime/client'
+import type { ClientContext, ConversationSnapshot, SessionId, SessionListState } from '@deepseek-ai/dsh-client-runtime/client'
 import { SessionInputShell } from '../src/client/input/facade.ts'
 import type { ComposerAttachment } from '../src/client/contract/slots.ts'
 import type { DraftAttachmentId } from '../src/client/input/contract.ts'
@@ -74,6 +74,10 @@ interface BenchOptions {
   promptError?: ConversationSnapshot['promptError']
   /** Authoritative queue rows served to the machine overlay (empty = none). */
   queue?: ConversationSnapshot['queue']
+  /** Live background jobs mirrored onto the session list. */
+  jobs?: SessionListState['jobsBySession'][SessionId]
+  /** Extra session-list rows (running descendants, etc.). */
+  listRows?: SessionListState['byId']
   /** The hub's steer-all face (empty-draft accelerated Enter). */
   steerQueue?: () => void
   variant?: 'hero' | 'composer'
@@ -132,6 +136,7 @@ function bench(over?: BenchOptions) {
   if (over?.draft !== undefined && over.draft !== '') shell.setDraft(over.draft)
   if (over?.attachments !== undefined) shell.addImages(over.attachments.map(attachment => attachment.id))
   const stop = vi.fn()
+  const halt = vi.fn()
   const removeImage = vi.fn((id: DraftAttachmentId) => { shell.removeImage(id) })
   const menuLauncher = createSnapshotStore<string | null>(over?.commandMenuOpen === true ? 'command' : null)
   const slotCalls: { key: string; owner: unknown }[] = []
@@ -141,13 +146,20 @@ function bench(over?: BenchOptions) {
     if (key === 'conversation.input.model') return over?.modelEntry ?? null
     return null
   }) as InputBarProps['renderSlot']
+  const listRows = over?.listRows ?? {}
   const props: InputBarProps = {
     sessionId: SID,
     SessionProvider: ({ children }) => children(SID),
     useSession: bindSnapshotSelector(session),
-    useSessions: bindSnapshotSelector(createSnapshotStore({
-      ids: [], byId: {}, current: undefined, phase: 'ready',
-      subagentsByParent: {}, jobsBySession: {}, currentAddress: undefined,
+    useSessions: bindSnapshotSelector(createSnapshotStore<SessionListState>({
+      ids: [SID, ...Object.keys(listRows) as SessionId[]],
+      byId: {
+        [SID]: { id: SID, displayTitle: 's1', running: over?.running ?? false, blank: false, updatedAt: 1 },
+        ...listRows,
+      },
+      current: SID, phase: 'ready', subagentsByParent: {},
+      jobsBySession: over?.jobs === undefined ? {} : { [SID]: over.jobs },
+      currentAddress: undefined,
     })),
     useWorkspaces: bindSnapshotSelector(createSnapshotStore({
       items: [], archivedSessionIds: [], state: 'idle', phase: 'ready', error: null,
@@ -176,6 +188,7 @@ function bench(over?: BenchOptions) {
     useLexicon: bindSnapshotSelector(shell.lexicon),
     useMenuLauncher: bindSnapshotSelector(menuLauncher),
     stop,
+    halt,
     command: over?.command ?? (() => Promise.resolve(true)),
     // Mirrors the real lookup chain (conversation namespace, then common).
     t: over?.t ?? makeTranslate(zh, commonZh),
@@ -198,7 +211,7 @@ function bench(over?: BenchOptions) {
   )!
   const interruptButton = view.container.querySelector<HTMLButtonElement>('button[aria-label="停止生成"]')
   return {
-    view, textarea, button, interruptButton, props, sink, shell, wiring: shell, session, stop, removeImage, slotCalls,
+    view, textarea, button, interruptButton, props, sink, shell, wiring: shell, session, stop, halt, removeImage, slotCalls,
     menuLauncher,
     steerQueue: over?.steerQueue,
   }
@@ -705,6 +718,63 @@ describe('running and lock semantics', () => {
     expect(button.getAttribute('aria-label')).toBe('发送消息')
     expect(interruptButton).toBeNull()
     expect(stop).not.toHaveBeenCalled()
+  })
+
+  it('running ordinary session exposes Halt all beside Stop generating', () => {
+    const { halt, stop, view } = bench({ running: true })
+    const haltButton = view.container.querySelector<HTMLButtonElement>('button[aria-label="全部停止"]')
+    expect(haltButton).not.toBeNull()
+    fireEvent.click(haltButton!)
+    expect(halt).toHaveBeenCalledTimes(1)
+    expect(stop).not.toHaveBeenCalled()
+  })
+
+  it('idle parent with a running descendant still exposes Halt all', () => {
+    const child = 'child-1' as SessionId
+    const { halt, button, view } = bench({
+      listRows: {
+        [child]: {
+          id: child, displayTitle: 'worker', running: true, blank: false, updatedAt: 2,
+          parentId: SID, origin: 'subagent',
+        },
+      },
+    })
+    expect(button.getAttribute('aria-label')).toBe('发送消息')
+    const haltButton = view.container.querySelector<HTMLButtonElement>('button[aria-label="全部停止"]')
+    expect(haltButton).not.toBeNull()
+    fireEvent.click(haltButton!)
+    expect(halt).toHaveBeenCalledTimes(1)
+  })
+
+  it('idle session with a live job exposes Halt all', () => {
+    const { halt, view } = bench({
+      jobs: [{ id: 'bash-1' as never, kind: 'bash', label: 'sleep 30', status: 'running', startedAt: 1 }],
+    })
+    const haltButton = view.container.querySelector<HTMLButtonElement>('button[aria-label="全部停止"]')
+    expect(haltButton).not.toBeNull()
+    fireEvent.click(haltButton!)
+    expect(halt).toHaveBeenCalledTimes(1)
+  })
+
+  it('idle session without descendants or jobs hides Halt all', () => {
+    const { view } = bench()
+    expect(view.container.querySelector('button[aria-label="全部停止"]')).toBeNull()
+  })
+
+  it('running continuable child keeps independent Stop without Halt all', () => {
+    const { view, interruptButton } = bench({
+      running: true,
+      subagent: {
+        address: {
+          parentSessionId: 'parent' as SessionId,
+          childSessionId: SID,
+          mode: 'continuable',
+        },
+        parentAvailable: true,
+      },
+    })
+    expect(interruptButton).not.toBeNull()
+    expect(view.container.querySelector('button[aria-label="全部停止"]')).toBeNull()
   })
 
   it('keeps both running subagent Enter gestures on Queue transport', () => {

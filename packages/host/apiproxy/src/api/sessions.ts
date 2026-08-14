@@ -364,10 +364,14 @@ export interface SessionsApi {
   Promise<RpcResponse<{ accepted: true }>>
 
   /**
-   * Stops an ordinary session's active turn, preserving pending inbox work
-   * that resumes in FIFO order after cancellation settles. Session-backed
-   * subagents reject with `agent-busy`.
+   * Stops an ordinary session. Omitted `scope` and `scope: 'turn'` abort only
+   * the active turn and preserve pending inbox work, which resumes in FIFO
+   * order after cancellation settles. `scope: 'all'` clears the inbox, requests
+   * cancellation of the session's owned background jobs, and starts draining
+   * continuable descendants; the RPC returns once those signals are issued and
+   * does not wait for quiescence. Session-backed subagents reject with
+   * `agent-busy`.
    */
-  cancel(request: RpcRequest<{ sessionId: SessionId }>): Promise<RpcResponse<{ accepted: true }>>
+  cancel(request: RpcRequest<{ sessionId: SessionId; scope?: 'turn' | 'all' }>): Promise<RpcResponse<{ accepted: true }>>
 
 }

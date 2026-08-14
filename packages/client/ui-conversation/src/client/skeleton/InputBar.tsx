@@ -1,7 +1,7 @@
 /** The default composer body: the 'conversation.composer.bar' slot entry.
  * Machine state arrives through the standard provide channel
- * (useInput + inputActions); the keyboard/DOM command face and stop arrive
- * through this entry's own inject, whose hooks compartment binds
+ * (useInput + inputActions); the keyboard/DOM command face, stop, and halt
+ * arrive through this entry's own inject, whose hooks compartment binds
  * useNotices/useLexicon; layout-phase inputs (variant, placeholder,
  * region-slot content) ride the owner props. Session facts
  * (running/removed/promptError) are self-selected via useSession. */
@@ -10,7 +10,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { ChangeEvent, KeyboardEvent, MouseEvent, ReactNode } from 'react'
 import clsx from 'clsx'
 import {
-  IconPlusOutline16, IconWarningOutline16, Toast, Tooltip,
+  IconPlusOutline16, IconStopFill16, IconWarningOutline16, Toast, Tooltip,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 import { AttachmentRail, DropOverlay, ImageLightbox } from '@deepseek-ai/dsh-client-ui-attachment'
 import type { AttachmentRailItem } from '@deepseek-ai/dsh-client-ui-attachment'
@@ -23,6 +23,7 @@ import type {} from '@deepseek-ai/dsh-goal/client'
 // wire types: apiproxy's sessions contract declares it, and client-runtime's
 // api-remotes import already places it in every client program.
 import type { Translate } from '@deepseek-ai/dsh-client-ui-slots'
+import { indexSubagentDescendants } from '@deepseek-ai/dsh-client-runtime/client'
 import type { ComposerAttachment, ComposerBarProps } from '../contract/slots.ts'
 import { deriveDecorations } from '../input/decorations.ts'
 import type { DraftDecorations } from '../input/decorations.ts'
@@ -44,8 +45,8 @@ interface ComposerRailItem extends AttachmentRailItem {
 export type InputBarProps = ComposerBarProps
 
 export function InputBar({
-  useSession, useInput, inputActions, keyboard, addImages, removeImage, draftImages,
-  resolveSubmitMode, toggleCommandMenu, stop, command, t,
+  useSession, useSessions, useInput, inputActions, keyboard, addImages, removeImage, draftImages,
+  resolveSubmitMode, toggleCommandMenu, stop, halt, command, t,
   renderSlot, useNotices, useLexicon, useMenuLauncher,
   useProjection, sessionId, variant, disabled: inert = false, blocked,
   workspacePickerOpen = false, onRequestWorkspace,
@@ -59,6 +60,11 @@ export function InputBar({
   const running = useSession(s => s.running) ?? false
   const subagent = useSession(s => s.subagent) ?? null
   const removed = useSession(s => s.removed) ?? false
+  const jobs = useSessions(s => (sessionId === undefined ? undefined : s.jobsBySession[sessionId]))
+  const runningDescendants = useSessions((s) => {
+    if (sessionId === undefined) return 0
+    return indexSubagentDescendants(s.byId).get(sessionId)?.runningCount ?? 0
+  })
   // Plan mode swaps the textarea placeholder (the projection is the folded
   // host value; owner-prop placeholders — hero, session-unavailable — win).
   const planActive = useProjection('plan', plan => plan !== undefined && (plan.pending ? !plan.active : plan.active))
@@ -543,6 +549,9 @@ export function InputBar({
   // pointer users can queue follow-ups while its current turn is running.
   const primaryStops = running && subagent === null
   const interruptible = running && continuable
+  const hasLiveJobs = jobs?.some(job => job.status === 'running' || job.status === 'stopping') === true
+  const canHalt = subagent === null && halt !== undefined && !removed && !inert
+    && (running || hasLiveJobs || runningDescendants > 0)
   const primaryLabel = primaryStops ? t('input.stop') : t('input.send')
   const onPrimary = (): void => {
     if (primaryStops) {
@@ -755,6 +764,19 @@ export function InputBar({
             {rightItems}
             {renderSlot('conversation.input.model', { locked: modelSeatLocked })}
             <ContextMeter useProjection={useProjection} t={t} />
+            {canHalt && (
+              <Tooltip label={t('input.halt')} side="top" delayMs={500}>
+                <button
+                  type="button"
+                  className={css.primary}
+                  aria-label={t('input.halt')}
+                  onMouseDown={keepFocus}
+                  onClick={halt}
+                >
+                  <IconStopFill16 size={16} />
+                </button>
+              </Tooltip>
+            )}
             {interruptible && (
               <Tooltip label={t('input.stop')} side="top" delayMs={500}>
                 <button

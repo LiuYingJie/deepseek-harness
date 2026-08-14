@@ -273,6 +273,9 @@ describe('sessions domain schemas', () => {
     expect(sessionPromptValueSchema.parse({ accepted: true, command: { kind: 'success' } }).command).toEqual({ kind: 'success' })
     expect(() => sessionPromptValueSchema.parse({ accepted: true, command: { kind: 'failure' } })).toThrow()
     expect(sessionCancelRequestSchema.parse({ sessionId: 's1' }).sessionId).toBe('s1')
+    expect(sessionCancelRequestSchema.parse({ sessionId: 's1', scope: 'all' }).scope).toBe('all')
+    expect(sessionCancelRequestSchema.parse({ sessionId: 's1', scope: 'turn' }).scope).toBe('turn')
+    expect(() => sessionCancelRequestSchema.parse({ sessionId: 's1', scope: 'tree' })).toThrow()
     expect(sessionUpdateQueueRequestSchema.parse({
       sessionId: 's1',
       itemId: 'i1',

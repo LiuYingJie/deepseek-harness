@@ -345,6 +345,7 @@ export const sessionUpdateQueueValueSchema = z.object({
 /** session.cancel request payload. */
 export const sessionCancelRequestSchema = z.object({
   sessionId: sessionIdSchema,
+  scope: z.enum(['turn', 'all']).optional(),
 }) satisfies z.ZodType<Wire<RequestPayload<'session.cancel'>>>
 
 /** session.cancel response value. */

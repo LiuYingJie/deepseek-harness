@@ -291,15 +291,16 @@ export class Session implements SessionFace {
   }
 
   /**
-   * Stop the active turn while the Host preserves pending inbox work; failures
-   * land in promptError (same error-strip display slot). A continuable
-   * subagent address routes through `subagent.interrupt`, whose durable
-   * parent-address authority works without a live parent Agent; a one-shot
-   * address stays uncancellable (the UI offers no stop action, so this arm is
-   * defensive).
+   * Stop the active turn, or halt the session tree. Ordinary `'turn'` (default)
+   * preserves pending inbox work. `'all'` clears the queue, kills owned jobs,
+   * and drains continuable descendants. A continuable subagent address always
+   * routes through `subagent.interrupt` (one-shot addresses stay uncancellable).
+   * Failures land in promptError.
+   * @param scope - `'turn'` aborts only the active generation; `'all'` stops
+   *   the ordinary session and its descendants. Ignored for addressed children.
    * @returns the cancel result.
    */
-  async cancel(): Promise<RpcResult<{ accepted: true }>> {
+  async cancel(scope: 'turn' | 'all' = 'turn'): Promise<RpcResult<{ accepted: true }>> {
     const address = this.address
     if (address !== undefined && address.mode === 'one-shot') {
       const result: RpcResult<{ accepted: true }> = {
@@ -318,7 +319,10 @@ export class Session implements SessionFace {
     try {
       result = address !== undefined
         ? (await this.api.subagents.interrupt(address)).result
-        : (await this.api.sessions.cancel({ sessionId: this.sessionId })).result
+        : (await this.api.sessions.cancel({
+          sessionId: this.sessionId,
+          ...scope === 'all' ? { scope } : {},
+        })).result
     } catch (error) {
       result = transportError(error)
     }

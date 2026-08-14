@@ -1098,6 +1098,37 @@ function changedWorkspaceView(workspaceId: string, value: unknown): WorkspaceVie
 }
 
 /**
+ * Halt one ordinary session: drain continuable descendants, kill owned live
+ * jobs, and cancel without preserving inbox. Admission cutoff and descendant
+ * cancellation run synchronously before this returns; handle release and job
+ * settlement stay in the background.
+ * @param ctx - host context holding optional subagent and job services.
+ * @param agent - the attached ordinary-session agent.
+ */
+function haltSession(ctx: Context, agent: Agent): void {
+  const subagents = ctx.get('subagents')
+  const drain = subagents === undefined
+    ? undefined
+    : subagents.drainContinuableDescendants([agent])
+  const jobs = ctx.get('jobs')
+  if (jobs !== undefined) {
+    for (const job of jobs.list(agent)) {
+      if (job.ownerSession !== agent.id) continue
+      if (job.status !== 'running' && job.status !== 'stopping') continue
+      try {
+        jobs.kill(job.id, agent, 'session halt')
+      } catch (error: unknown) {
+        ctx.logger.warn(`session.cancel: failed to kill job ${job.id}: ${errorChain(error)}`)
+      }
+    }
+  }
+  agent.cancel({ kind: 'user' })
+  void drain?.catch((error: unknown) => {
+    ctx.logger.warn(`session.cancel: continuable descendant drain failed: ${errorChain(error)}`)
+  })
+}
+
+/**
  * Implement ApiProxy over a composed host context.
  * @param ctx - a context with the Host spine and Workspace registry mounted.
  * @param defaults - host routing and project-directory defaults.
@@ -2616,7 +2647,7 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
       },
 
       cancel(request) {
-        const { sessionId } = request.payload
+        const { sessionId, scope } = request.payload
         const agent = ctx.agents.get(sessionId)
         if (agent === undefined) {
           return Promise.resolve(err(request, {
@@ -2628,7 +2659,8 @@ export function createApiProxy(ctx: Context, defaults: ApiProxyDefaults): ApiPro
         if (hasSubagentOwner(agent.session, agent)) {
           return Promise.resolve(err(request, subagentOwnershipError(sessionId)))
         }
-        agent.cancel({ kind: 'user' }, { keepInbox: true })
+        if (scope === 'all') haltSession(ctx, agent)
+        else agent.cancel({ kind: 'user' }, { keepInbox: true })
         return Promise.resolve(ok(request, { accepted: true as const }))
       },
     },
