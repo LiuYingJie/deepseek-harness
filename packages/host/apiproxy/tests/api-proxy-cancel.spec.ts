@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
 import AgentRegistry from '@deepseek-ai/dsh-agent'
 import type { Agent } from '@deepseek-ai/dsh-agent'
-import { JobId } from '@deepseek-ai/dsh-jobs'
+import { JobId, type JobSnapshot } from '@deepseek-ai/dsh-jobs'
 import SessionStore, { SessionId } from '@deepseek-ai/dsh-session'
 import UserQuestionService from '@deepseek-ai/dsh-user-questions'
 import { RpcId } from '../src/api/rpc.ts'
@@ -36,7 +36,7 @@ async function harness(options: {
   const drainContinuableDescendants = vi.fn(options.drain ?? (() => Promise.resolve()))
   ctx.provide('subagents', { drainContinuableDescendants })
   const kill = vi.fn(() => 'requested' as const)
-  const list = vi.fn(() => [] as const)
+  const list = vi.fn((): readonly JobSnapshot[] => [])
   ctx.provide('jobs', { list, kill })
   const api = createApiProxy(ctx, { defaultModelSelection: () => ({ provider: 'p', model: 'm' }), cwd: '/tmp' })
   return { api, agent, cancel, drainContinuableDescendants, list, kill, ctx }
@@ -64,9 +64,9 @@ describe('session.cancel scopes', () => {
     const settled = JobId('bash-3')
     const { api, agent, cancel, drainContinuableDescendants, list, kill } = await harness()
     list.mockReturnValue([
-      { id: owned, kind: 'bash', label: 'owned', status: 'running', ownerSession: sid('session-root'), startedAt: 1 },
-      { id: foreign, kind: 'bash', label: 'unowned', status: 'running', startedAt: 1 },
-      { id: settled, kind: 'bash', label: 'done', status: 'completed', ownerSession: sid('session-root'), startedAt: 1 },
+      { id: owned, kind: 'bash', label: 'owned', status: 'running', ownerSession: sid('session-root'), startedAt: 1, reported: false },
+      { id: foreign, kind: 'bash', label: 'unowned', status: 'running', startedAt: 1, reported: false },
+      { id: settled, kind: 'bash', label: 'done', status: 'completed', ownerSession: sid('session-root'), startedAt: 1, reported: false },
     ])
     expect((await api.sessions.cancel(request({ sessionId: agent.id, scope: 'all' }))).result)
       .toEqual({ ok: true, value: { accepted: true } })
