@@ -10,10 +10,10 @@ import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import type { Agent, PreStepDecision } from '@deepseek-ai/dsh-agent'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
-import type { MessageSource } from '@deepseek-ai/dsh-llm'
+import type { MessageSource, ToolSchema } from '@deepseek-ai/dsh-llm'
 import type { UserMessage } from '@deepseek-ai/dsh-session'
 import type { AssembleContext } from '@deepseek-ai/dsh-system-prompt'
-import type { PostToolDecision, ToolExecution, ToolSchema } from '@deepseek-ai/dsh-tools'
+import type { PostToolDecision, ToolExecution } from '@deepseek-ai/dsh-tools'
 
 /** Cordis plugin name used by loader diagnostics. */
 export const name = 'exploration-hygiene'
