@@ -2,5 +2,5 @@
 # side as of the last confirmed-consistent state. Both languages carry equal authority;
 # after editing either side, bring the other along and re-record with:
 #   pnpm run verify-translation-pairing --write .agents/notes/implemented/feature/2026-08-17-exploration-hygiene.md
-2026-08-17-exploration-hygiene.md: fa95538bc7614ed1964934b30362f6b2696cd891
-2026-08-17-exploration-hygiene.zh.md: cf5506b22fc1f2499bad50903770aadd9b6a5907
+2026-08-17-exploration-hygiene.md: b5515d35eda85427e79dc9e29afb76f2268472fa
+2026-08-17-exploration-hygiene.zh.md: fd8172fe2f8ae3bf3b2f78c3cd2a9d997be597e1
