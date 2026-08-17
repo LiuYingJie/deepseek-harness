@@ -157,6 +157,13 @@
 - id: repeat-tool-reminder
   name: '@deepseek-ai/dsh-repeat-tool-reminder'
 
+# Operating-contract prompt plus consecutive non-progress inspection reminders.
+# Default thresholds [8, 14, 22] stay above ordinary snapshot tool-call counts.
+- id: exploration-hygiene
+  name: '@deepseek-ai/dsh-exploration-hygiene'
+  config:
+    thresholds: [8, 14, 22]
+
 # The filesystem stack rides the SAME sandbox policy as bash: dsh-fs-sandbox
 # replaces dsh-fs-local behind ctx.fs and fences write/edit by the effective
 # mode (read-only denies, workspace-write contains to the workspace + temp

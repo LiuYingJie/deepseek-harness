@@ -61,6 +61,8 @@ flowchart LR
   cfg --> plugin_acp_tool_todo
   plugin_acp_repeat_tool_reminder["repeat-tool-reminder<br/>@deepseek-ai/dsh-repeat-tool-reminder"]
   cfg --> plugin_acp_repeat_tool_reminder
+  plugin_acp_exploration_hygiene["exploration-hygiene<br/>@deepseek-ai/dsh-exploration-hygiene"]
+  cfg --> plugin_acp_exploration_hygiene
   plugin_acp_fs_sandbox["fs-sandbox<br/>@deepseek-ai/dsh-fs-sandbox"]
   cfg --> plugin_acp_fs_sandbox
   plugin_acp_fs_observation_policy["fs-observation-policy<br/>@deepseek-ai/dsh-fs-observation-policy"]
@@ -98,6 +100,7 @@ flowchart LR
 | `tool-ralph` | `@deepseek-ai/dsh-tool-ralph` |
 | `tool-todo` | `@deepseek-ai/dsh-tool-todo` |
 | `repeat-tool-reminder` | `@deepseek-ai/dsh-repeat-tool-reminder` |
+| `exploration-hygiene` | `@deepseek-ai/dsh-exploration-hygiene` |
 | `fs-sandbox` | `@deepseek-ai/dsh-fs-sandbox` |
 | `fs-observation-policy` | `@deepseek-ai/dsh-fs-observation-policy` |
 | `tool-fs` | `@deepseek-ai/dsh-tool-fs` |

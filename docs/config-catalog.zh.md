@@ -587,6 +587,33 @@ export interface Config {
 
 来源：[`packages/e2b/e2b/src/index.ts:43`](../packages/e2b/e2b/src/index.ts)
 
+<a id="deepseek-aidsh-exploration-hygiene"></a>
+
+## `@deepseek-ai/dsh-exploration-hygiene`
+
+需要：`systemPrompt` · `tools`
+
+```ts config-catalog
+/**
+ * Plugin config, validated by the same-named schemastery schema plus the
+ * load-time checks in `apply`. Empty `thresholds` disables stall reminders.
+ * Empty `section` disables the prompt contribution. `progress` must name at
+ * least one pattern so every tracked call cannot silently count as inspection.
+ */
+export interface Config {
+  /** Operating-contract prompt text; empty disables the section (default {@link DEFAULT_SECTION}). */
+  section?: string
+  /** Consecutive non-progress counts that trigger a reminder (default {@link DEFAULT_THRESHOLDS}). */
+  thresholds?: number[]
+  /** Tool-name patterns that reset the stall chain as task progress (default {@link DEFAULT_PROGRESS}). */
+  progress?: string[]
+  /** Tool-name patterns transparent to the chain (default {@link DEFAULT_EXCLUDE}). */
+  exclude?: string[]
+}
+```
+
+来源：[`packages/guard/exploration-hygiene/src/index.ts:59`](../packages/guard/exploration-hygiene/src/index.ts)
+
 <a id="deepseek-aidsh-fs-local"></a>
 
 ## `@deepseek-ai/dsh-fs-local`
