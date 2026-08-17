@@ -17,7 +17,7 @@ Status: implemented
 一个 guard 插件 `@deepseek-ai/dsh-exploration-hygiene`（位于 `packages/guard/exploration-hygiene/`）拥有同一关注点的两层：
 
 1. **操作契约提示词段落** `harness:coding-guidance`，顺序为 10（在 persona 之后、各工具指导之前）。它要求模型走最简单路径、先定向再动手、优先使用专门和 MCP 工具，并在环境受阻时提问而不是反向工程。当可见工具包含 `mcp__<server>__*` 时，同一段落追加当前服务器列表。空的 `section` 配置关闭该贡献。
-2. **探查停滞提醒**，挂在 `tools/post-execute` 上，投递路径与 repeat-tool-reminder 相同（`additionalContexts`、插件来源的 `user/message`、第一阈值简短、后续阈值详细）。连续的、不属于 `progress` 的被跟踪调用会增加每个 agent 的计数器；匹配 `progress` 或用户提示会重置它。默认 `progress` 为 `write`、`edit`、`str_replace_editor`、`ask_user_question`、`run_code`、`mcp__*`。默认 `exclude` 为 `todo_write`。默认 `thresholds` 为 `[8, 14, 22]`。空的 `thresholds` 关闭提醒。
+2. **探查停滞提醒**，挂在 `tools/post-execute` 上，投递路径与 repeat-tool-reminder 相同（`additionalContexts`、插件来源的 `user/message`、第一阈值简短、后续阈值详细）。连续的、不属于 `progress` 的被跟踪调用会增加每个 agent 的计数器；匹配 `progress` 或用户提示会重置它。默认 `progress` 为 `write`、`edit`、`str_replace_editor`、`ask_user_question`、`run_code`、`mcp__*`。默认 `exclude` 为 `todo_write`。默认 `thresholds` 为 `[8, 14, 22]`。空的 `thresholds` 关闭提醒。当计数继续增长、超过所配置的最高阈值后，每隔 `thresholds[0]` 次会再触发一次更强的「链式」提醒（默认 `[8, 14, 22]` 时会在 30、38、46… 触发），建议的下一动作按四个严重度递增——这样卡住的循环不会保持沉默。
 
 该插件挂在 [`dsh-base`](../../../../packages/bundle/base/cordis.patch.yml) 中，因此每个叠加共享核心的 profile 都会收到它，并挂在 ACP 示例组合中以使该表面一致。`minimal` preset 的 `complete: true` persona 仍会抑制该段落。具体的 `dsh-agent-loop` 不变。
 
@@ -41,4 +41,4 @@ MCP 偏好由这里拥有，而不是 `dsh-mcp-client`，因为习惯是「专�
 
 ## Testing
 
-包测试通过真实 agent loop 对脚本化 mock adapter 驱动：默认与空段落、存活 MCP 附录、fiber 处置段落、连续混合探查、进展重置、exclude 透明、按 agent 分键、用户提示重置、无 agent 的 execute、错误配置快速失败、空阈值关闭，以及 Loader `unwrapExports`。把插件挂入 `dsh-base` 和 ACP 示例，使该段落出现在这些表面的已组装系统提示词快照中。
+包测试通过真实 agent loop 对脚本化 mock adapter 驱动：默认与空段落、存活 MCP 附录、fiber 处置段落、连续混合探查、进展重置、exclude 透明、按 agent 分键、用户提示重置、无 agent 的 execute、错误配置快速失败、空阈值关闭、最高阈值之后的链式提醒、严重度递增，以及 Loader `unwrapExports`。把插件挂入 `dsh-base` 和 ACP 示例，使该段落出现在这些表面的已组装系统提示词快照中。

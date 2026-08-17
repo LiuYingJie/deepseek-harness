@@ -152,6 +152,48 @@ describe('inspection-stall reminders', () => {
     expect(reminders(agent)).toHaveLength(0)
   })
 
+  it('keeps reminding past the highest configured threshold so the chain does not go silent', async () => {
+    const ctx = await harness({ thresholds: [3, 5] })
+    const adapter = new MockAdapter([
+      ...Array.from({ length: 8 }, (_, i) => toolCallResponse(`c${i}`, 'read', { q: i })),
+      textResponse('done'),
+    ])
+    ctx.llm.registerAdapter(['mock'], adapter)
+    const agent = ctx.agentLoop.create(SessionId('a1'), { provider: 'mock', model: 'mock' })
+    agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
+    await waitForIdle(ctx, agent)
+
+    const found = reminders(agent)
+    expect(found).toHaveLength(3)
+    expect(found[0]!.source).toEqual(guardSource(3))
+    expect(found[1]!.source).toEqual(guardSource(5))
+    expect(found[2]!.source).toEqual(guardSource(8))
+    expect(found[2]!.text).toContain('Inspection chain past the highest configured threshold')
+    expect(found[2]!.text).toContain('consecutive_inspection_calls: 8')
+  })
+
+  it('escalates the chained reminder when the stall keeps growing past every reminder', async () => {
+    const ctx = await harness({ thresholds: [2, 3, 4] })
+    const adapter = new MockAdapter([
+      ...Array.from({ length: 25 }, (_, i) => toolCallResponse(`c${i}`, 'read', { q: i })),
+      textResponse('done'),
+    ])
+    ctx.llm.registerAdapter(['mock'], adapter)
+    const agent = ctx.agentLoop.create(SessionId('a1'), { provider: 'mock', model: 'mock' })
+    agent.followup(createUserMessage({ content: [{ type: 'text', text: 'go' }], source: { kind: 'user' } }))
+    await waitForIdle(ctx, agent)
+
+    const found = reminders(agent)
+    const counts = found.map(r => (r.source as { summary?: string }).summary)
+    expect(counts).toEqual([
+      'inspection × 2', 'inspection × 3', 'inspection × 4',
+      'inspection × 6', 'inspection × 8', 'inspection × 10', 'inspection × 12',
+      'inspection × 14', 'inspection × 16', 'inspection × 18', 'inspection × 20',
+      'inspection × 22', 'inspection × 24',
+    ])
+    expect(found[found.length - 1]!.text).toMatch(/Hard stop|ignored earlier reminders/i)
+  })
+
   it('resets the stall when a progress tool runs', async () => {
     const ctx = await harness({ thresholds: [3] })
     const adapter = new MockAdapter([

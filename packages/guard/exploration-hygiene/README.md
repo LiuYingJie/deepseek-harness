@@ -30,6 +30,8 @@ A tracked call that matches `progress` resets the agent's consecutive counter. A
 
 Reminders ride `tools/post-execute` `additionalContexts` with source `{kind: 'plugin', plugin: 'exploration-hygiene'}`, never a `content` replacement. The first threshold delivers a short nudge; every later threshold names the last tool and the run length.
 
+When the counter keeps growing past the highest configured threshold, the chain does not go silent: a stronger reminder fires every `thresholds[0]` calls (e.g. with defaults `[8, 14, 22]` it also fires at 30, 38, 46…). Each repetition escalates the suggested next action so the model does not keep receiving an identical nudge.
+
 ## Model Experience
 
 ### System prompt
@@ -107,9 +109,41 @@ Each reminder is retained history. Agents keep independent counters.
 
 Append-only; newly visible content follows the reusable request prefix and does not invalidate existing KV-cache entries.
 
+### Past-the-highest context message
+
+#### What the model sees
+
+When the counter keeps growing past the highest configured threshold, a stronger reminder fires every `thresholds[0]` calls so the chain does not go silent. Severity escalates with `floor((count - highest) / thresholds[0])`.
+
+##### Past-the-highest reminder
+
+```markdown
+Inspection chain past the highest configured threshold:
+- last_tool: <toolName>
+- consecutive_inspection_calls: <count>
+- reminders_ignored: <count - highest>
+You are now in a loop. <escalating next-action sentence>
+```
+
+##### Action severities
+
+```markdown
+Pick the simplest viable action and write it now. Stop exploring.
+Stop exploring. Either write a working draft, ask the user the blocking question, or conclude with the current best guess.
+Hard stop. Do not make another inspection call. Ask the user or write a minimal working answer.
+You have ignored earlier reminders. Conclude this turn with text only: state the blocker, ask one question, or hand back the simplest answer you have.
+```
+
+#### Token effect
+
+Each chained reminder is retained history.
+
+#### KV Cache effect
+
+Append-only; newly visible content follows the reusable request prefix and does not invalidate existing KV-cache entries.
+
 ## Known Limitations and Deferred Work
 
 - **Progress is a name-pattern allowlist** — shell commands that mutate files still count as inspection unless `progress` includes `bash`/`pwsh`. Default `mcp__*` treats every MCP tool as progress.
 - **Advisory only** — escalating to `block` at a high threshold is not implemented, though `PostToolDecision` already supports blocking.
-- **Past the highest threshold a chain goes silent** — reminders fire only at exact configured counts, never beyond them.
 - **Legitimate large-codebase orientation still draws nudges** past the thresholds — the pressure valves are `thresholds`/`progress`/`exclude` config.

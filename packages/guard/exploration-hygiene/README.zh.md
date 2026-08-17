@@ -30,6 +30,8 @@
 
 提醒作为 `tools/post-execute` 的 `additionalContexts` 传递，来源为 `{kind: 'plugin', plugin: 'exploration-hygiene'}`，从不替换 `content`。第一个阈值只发送简短提醒；后续每个阈值都会给出最后一次工具名和连续次数。
 
+当计数超过所配置的最高阈值后，链不会保持沉默：每隔 `thresholds[0]` 次会再触发一次更强提醒（默认值 `[8, 14, 22]` 时会再在 30、38、46… 触发）。每次触发都会升级建议的下一动作，避免模型反复收到相同提示。
+
 ## Model Experience
 
 ### 系统提示词
@@ -107,9 +109,41 @@ The recent calls are not making task progress. Do not continue exploring. Write 
 
 只追加；新可见内容跟在可复用请求前缀之后，不会使已有 KV-cache 条目失效。
 
+### 超过最高阈值后的上下文消息
+
+#### 模型看到什么
+
+当计数继续增长、超过所配置的最高阈值后，每隔 `thresholds[0]` 次会再触发一次更强提醒，链不会保持沉默。严重度按 `floor((count - highest) / thresholds[0])` 升级。
+
+##### 超过最高阈值提醒
+
+```markdown
+Inspection chain past the highest configured threshold:
+- last_tool: <toolName>
+- consecutive_inspection_calls: <count>
+- reminders_ignored: <count - highest>
+You are now in a loop. <escalating next-action sentence>
+```
+
+##### 动作严重度
+
+```markdown
+Pick the simplest viable action and write it now. Stop exploring.
+Stop exploring. Either write a working draft, ask the user the blocking question, or conclude with the current best guess.
+Hard stop. Do not make another inspection call. Ask the user or write a minimal working answer.
+You have ignored earlier reminders. Conclude this turn with text only: state the blocker, ask one question, or hand back the simplest answer you have.
+```
+
+#### Token 影响
+
+每条链式提醒都是保留历史。
+
+#### KV Cache 影响
+
+只追加；新可见内容跟在可复用请求前缀之后，不会使已有 KV-cache 条目失效。
+
 ## Known Limitations and Deferred Work
 
 - **进展是名字模式允许列表** — 会改文件的 shell 命令仍计为探查，除非 `progress` 包含 `bash`/`pwsh`。默认的 `mcp__*` 把每个 MCP 工具都视为进展。
 - **仅建议** — 尚未在高阈值升级为 `block`，尽管 `PostToolDecision` 已支持阻止。
-- **超过最高阈值后链保持沉默** — 提醒只在恰好等于所配置计数时触发，不会在其后继续触发。
 - **合理的大型代码库定向仍会在超过阈值后收到提醒** — 压力阀是 `thresholds`/`progress`/`exclude` 配置。

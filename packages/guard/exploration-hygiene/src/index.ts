@@ -89,6 +89,28 @@ function detailedReminder(toolName: string, count: number): string {
     + 'Write or edit, ask the user, use a specialized tool if one fits, or conclude with the simplest viable approach.'
 }
 
+/**
+ * Strongest reminder, fired when the chain keeps growing past every configured
+ * threshold. Each repetition escalates the suggested next action so the model
+ * does not keep receiving an identical nudge.
+ */
+function chainedReminder(toolName: string, count: number, highest: number, chainStep: number): string {
+  const overshoot = count - highest
+  const actions: string[] = [
+    'Pick the simplest viable action and write it now. Stop exploring.',
+    'Stop exploring. Either write a working draft, ask the user the blocking question, or conclude with the current best guess.',
+    'Hard stop. Do not make another inspection call. Ask the user or write a minimal working answer.',
+    'You have ignored earlier reminders. Conclude this turn with text only: state the blocker, ask one question, or hand back the simplest answer you have.',
+  ]
+  const severity = Math.min(actions.length - 1, Math.floor(overshoot / chainStep)) + 1
+  const next = actions[severity - 1] as string
+  return 'Inspection chain past the highest configured threshold:\n'
+    + `- last_tool: ${toolName}\n`
+    + `- consecutive_inspection_calls: ${count}\n`
+    + `- reminders_ignored: ${overshoot}\n`
+    + 'You are now in a loop. ' + next
+}
+
 /** Compile one `*`-wildcard pattern to an anchored RegExp (every other regex metacharacter is matched literally). */
 function wildcardToRegExp(pattern: string): RegExp {
   const escaped = pattern.replace(/[|\\{}()[\]^$+?.]/g, String.raw`\$&`)
@@ -169,6 +191,8 @@ export function apply(ctx: Context, config: Config): void {
   if (thresholds.length === 0) return
 
   const stalls = new WeakMap<Agent, Stall>()
+  const highestThreshold = thresholds[thresholds.length - 1] as number
+  const firstThreshold = thresholds[0] as number
 
   function tracked(toolName: string): boolean {
     return !matches(excludePatterns, toolName)
@@ -183,8 +207,14 @@ export function apply(ctx: Context, config: Config): void {
     }
     const count = (stalls.get(exec.agent)?.count ?? 0) + 1
     stalls.set(exec.agent, { count })
-    if (!thresholdSet.has(count)) return undefined
-    const text = count === thresholds[0] ? GENTLE_REMINDER : detailedReminder(exec.name, count)
+    let text: string
+    if (thresholdSet.has(count)) {
+      text = count === firstThreshold ? GENTLE_REMINDER : detailedReminder(exec.name, count)
+    } else if (count > highestThreshold && (count - highestThreshold) % firstThreshold === 0) {
+      text = chainedReminder(exec.name, count, highestThreshold, firstThreshold)
+    } else {
+      return undefined
+    }
     /* jscpd:ignore-start */
     return createUserMessage({
       content: [{ type: 'text', text }],
