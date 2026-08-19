@@ -1304,6 +1304,22 @@ export interface ReconnectConfig {
 
 Source: [`packages/mcp/mcp-client/src/index.ts:98`](../packages/mcp/mcp-client/src/index.ts)
 
+<a id="deepseek-aidsh-memory"></a>
+
+## `@deepseek-ai/dsh-memory`
+
+```ts config-catalog
+/** Memory service configuration. */
+export interface Config {
+  /** Explicit ledger file path; overrides the project-root default. */
+  readonly path?: string
+  /** Directory whose nearest `.git` ancestor anchors the default ledger location. */
+  readonly cwd?: string
+}
+```
+
+Source: [`packages/memory/memory/src/index.ts:81`](../packages/memory/memory/src/index.ts)
+
 <a id="deepseek-aidsh-message-feedback"></a>
 
 ## `@deepseek-ai/dsh-message-feedback`
@@ -1453,6 +1469,22 @@ export type Config = LocalConfig
 Depends on: [`LocalConfig`](#deepseek-aidsh-pwsh-local)
 
 Source: [`packages/shell/pwsh-sandbox/src/index.ts:40`](../packages/shell/pwsh-sandbox/src/index.ts)
+
+<a id="deepseek-aidsh-refinery"></a>
+
+## `@deepseek-ai/dsh-refinery`
+
+```ts config-catalog
+/** Refinery service configuration. */
+export interface Config {
+  /** Explicit stream file path; overrides the project-root default. */
+  readonly path?: string
+  /** Directory whose nearest `.git` ancestor anchors the default stream location. */
+  readonly cwd?: string
+}
+```
+
+Source: [`packages/extensions/refinery/src/index.ts:81`](../packages/extensions/refinery/src/index.ts)
 
 <a id="deepseek-aidsh-repeat-tool-reminder"></a>
 
@@ -2526,6 +2558,26 @@ export interface Config {
 
 Source: [`packages/lsp/tool-lsp/src/index.ts:58`](../packages/lsp/tool-lsp/src/index.ts)
 
+<a id="deepseek-aidsh-tool-memory"></a>
+
+## `@deepseek-ai/dsh-tool-memory`
+
+Requires: `tools` · `memory`
+
+```ts config-catalog
+/** Model-facing memory tool configuration. */
+export interface Config {
+  /** Maximum active records rendered in the injected ledger; minimum 1. */
+  readonly maxInjectEntries?: number
+  /** Whether failed turns automatically append an `auto` origin problem record; defaults true. */
+  readonly autoCaptureFailures?: boolean
+  /** Maximum characters of each record detail rendered in the injected ledger; minimum 8. */
+  readonly maxDetailChars?: number
+}
+```
+
+Source: [`packages/memory/tool-memory/src/index.ts:47`](../packages/memory/tool-memory/src/index.ts)
+
 <a id="deepseek-aidsh-tool-pwsh"></a>
 
 ## `@deepseek-ai/dsh-tool-pwsh`
@@ -2563,6 +2615,26 @@ export interface Config {
 ```
 
 Source: [`packages/workflow/tool-ralph/src/index.ts:23`](../packages/workflow/tool-ralph/src/index.ts)
+
+<a id="deepseek-aidsh-tool-refinery"></a>
+
+## `@deepseek-ai/dsh-tool-refinery`
+
+Requires: `tools` · `refinery` · `subagents` · `memory`
+
+```ts config-catalog
+/** Model-facing refinery tool configuration. */
+export interface Config {
+  /** The `ctx.subagents` provider name proposal authors start on (default `spawn`). */
+  readonly provider?: string
+  /** Read-only tool names the proposal author keeps; everything else is removed. */
+  readonly authorToolAllow?: string[]
+  /** Maximum ledger problems rendered into the author prompt; minimum 1. */
+  readonly maxLedgerEntries?: number
+}
+```
+
+Source: [`packages/extensions/tool-refinery/src/index.ts:25`](../packages/extensions/tool-refinery/src/index.ts)
 
 <a id="deepseek-aidsh-tool-session-query"></a>
 
@@ -2743,6 +2815,26 @@ export interface Config {
 
 Source: [`packages/todo/tool-todo/src/index.ts:29`](../packages/todo/tool-todo/src/index.ts)
 
+<a id="deepseek-aidsh-tool-toolbox"></a>
+
+## `@deepseek-ai/dsh-tool-toolbox`
+
+Requires: `tools` · `toolbox`
+
+```ts config-catalog
+/** Model-facing toolbox tool configuration. */
+export interface Config {
+  /** Whether the plugin mounts library tools on load; defaults true. */
+  readonly mountOnLoad?: boolean
+  /** Whether library-file edits from other processes hot-sync the mount; defaults true. */
+  readonly watchLibrary?: boolean
+  /** Milliseconds library edits must stay stable before the mount syncs; minimum 1. */
+  readonly watchStabilityMs?: number
+}
+```
+
+Source: [`packages/extensions/tool-toolbox/src/index.ts:27`](../packages/extensions/tool-toolbox/src/index.ts)
+
 <a id="deepseek-aidsh-tool-web"></a>
 
 ## `@deepseek-ai/dsh-tool-web`
@@ -2786,6 +2878,22 @@ export interface Config {
 ```
 
 Source: [`packages/workflow/tool-workflow/src/index.ts:33`](../packages/workflow/tool-workflow/src/index.ts)
+
+<a id="deepseek-aidsh-toolbox"></a>
+
+## `@deepseek-ai/dsh-toolbox`
+
+```ts config-catalog
+/** Toolbox service configuration. */
+export interface Config {
+  /** Explicit library file path; overrides the project-root default. */
+  readonly path?: string
+  /** Directory whose nearest `.git` ancestor anchors the default library location. */
+  readonly cwd?: string
+}
+```
+
+Source: [`packages/extensions/toolbox/src/index.ts:93`](../packages/extensions/toolbox/src/index.ts)
 
 <a id="deepseek-aidsh-tools"></a>
 

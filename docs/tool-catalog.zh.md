@@ -33,6 +33,9 @@
 | `@deepseek-ai/dsh-tool-lsp` | `lsp` | `ctx.tools`、`ctx.lsp`、`ctx.systemPrompt` | `tool/call`、`tool/result` | - | lsp 工具将提供方选择和语言服务器子进程置于 ctx.lsp 之后，因此其模型可见 schema 在更换提供方时保持稳定。运行时要求已注册提供方，例如 `@deepseek-ai/dsh-lsp-stdio`；如果没有提供方，查询会返回结构化 `LSP_UNAVAILABLE` 错误，而不会改变 schema。 |
 | `@deepseek-ai/dsh-tool-ralph` | `ralph` | `ctx.tools`、`ctx.workflowEngine`、`ctx.subagents`、`ctx.systemPrompt`、`a calling Agent (exec.agent parents every fresh round)` | `tool/call`、`tool/result`、`workflow and child session events during execution` | - | 固定的前台工作流会在每个 Round 启动一个全新的结构化子级；模型只能选择不可变目标和可选的 Round 上限。 |
 | `@deepseek-ai/dsh-tool-skill` | `skill` | `ctx.tools`、`ctx.agents`、`ctx.skills` | `tool/call`、`tool/result`、`user/message replacement catalogs via agent.inject()` | - | - |
+| `@deepseek-ai/dsh-tool-memory` | `memory_list`、`memory_record`、`memory_resolve` | `ctx.tools`、`ctx.memory` | `tool/call`、`tool/result`、`user/message ledger publications via agent/pre-step` | - | 三个记忆工具读写项目台账；步骤注入把活跃记录发布为替换用户消息，turn 失败捕获追加 `auto` 来源的 problem 记录。二者均受 `maxInjectEntries`/`maxDetailChars` 约束，并以 `memory_record` 工具对该 agent 可见为前提。 |
+| `@deepseek-ai/dsh-tool-toolbox` | `toolbox_list`、`toolbox_publish`、`toolbox_retire` | `ctx.tools`、`ctx.toolbox`、`ctx.codeRuntime at call time (worker-thread backend)` | `tool/call`、`tool/result` | - | 三个 toolbox 工具管理持久库；挂载的库工具经 code-runtime seam 执行存储程序，且只通过其存储 schema 进入目录，因此固定目录列出的是管理工具。 |
+| `@deepseek-ai/dsh-tool-refinery` | `refinery_list`、`refinery_run`、`refinery_settle` | `ctx.tools`、`ctx.refinery`、`ctx.subagents with outputSchema/toolFilter/persona`、`ctx.memory` | `tool/call`、`tool/result`、`refinery stream events through ctx.refinery during execution` | - | refinery 工具读写提案流；`refinery_run` 启动一个只读编写者 subagent 并持久其结构化结果。目录挂载使用 mock 提供方，因为 schema 收割不运行子会话。 |
 | `@deepseek-ai/dsh-tool-session-query` | `session_event_read`、`session_event_search`、`session_event_trace`、`session_search`、`session_trace` | `ctx.tools`、`ctx.systemPrompt`、`ctx.sessionQuery`、`a calling Agent for workspace authority` | `tool/call`、`tool/result` | - | 这 5 个只读工具会隐藏提供方游标，并根据不可变的调用 agent 会话为每个结果授权。该包需要选择启用；需要强制截止时间或限制行内输出的组合还会挂载通用超时或 spill 策略。 |
 | `@deepseek-ai/dsh-tool-subagent` | `subagent` | `ctx.tools`、`ctx.subagents`、`ctx.systemPrompt` | `tool/call`、`tool/result`、`child session events through the chosen provider` | `subagent`、`subagent_fork` | 注册的工具名称取决于加载时 `toolName` 配置（默认为 `subagent`）；上述 schema 对应默认值。随产品发布的组合会为每个 subagent 后端加载一次该包，因此模型还会看到绑定到 fork 后端的 `subagent_fork`。每个实例的描述、`run_in_background` 参数与 system prompt 策略取决于它自己的 `backgroundMode` 和 `enableRunInBackground`，因此两个随附 schema 并不相同：`subagent` 为 `continuable`，省略参数时默认后台运行，并由 runtime 自动投递结束结果；`subagent_fork` 保持 `one-shot`，省略参数时默认前台运行。详见 `packages/bundle/base/cordis.patch.yml` 和 `examples/acp-agent/cordis.yml`。 |
 | `@deepseek-ai/dsh-tool-subagent-control` | `interrupt_agent`、`list_agents`、`send_message` | `ctx.tools`、`ctx.subagents`、`ctx.agents and ctx.sessionProjections (list_agents only)` | `tool/call`、`tool/result`、`child session events through ctx.subagents` | - | 这些是控制可继续后台 subagent 的全局命名工具：绑定提供方的 `tool-subagent` 实例注册不同的委派工具；本包注册一次 `send_message` 和 `interrupt_agent`，另由 `list_agents` 通过单独加载的 `/list-agents` 插件提供，其目录行使用 sessionProjections 和实时 Agent 注册表。 |
@@ -1236,6 +1239,237 @@ lsp 工具将提供方选择和语言服务器子进程置于 ctx.lsp 之后，�
 ```
 
 来源：[`packages/skill/tool-skill/src/index.ts`](../packages/skill/tool-skill/src/index.ts)
+
+<a id="deepseek-aidsh-tool-memory"></a>
+
+## `@deepseek-ai/dsh-tool-memory`
+
+### `memory_list`
+
+List the active records in the project memory ledger.
+
+```json
+{
+  "type": "object",
+  "properties": {}
+}
+```
+
+Source: [`packages/memory/tool-memory/src/index.ts`](../packages/memory/tool-memory/src/index.ts)
+
+### `memory_record`
+
+Record one durable entry in the project memory ledger: an unresolved problem, a standing decision, or a lesson. Use it the moment a problem is confirmed to persist, a decision is made, or a lesson worth keeping is identified — the entry survives this session and is injected into later sessions working on this project. Prefer `problem` for anything that should be fixed later.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "kind": {
+      "type": "string",
+      "description": "problem | decision | lesson.",
+      "enum": [
+        "problem",
+        "decision",
+        "lesson"
+      ]
+    },
+    "title": {
+      "type": "string",
+      "description": "One concise imperative line naming the problem, decision, or lesson."
+    },
+    "detail": {
+      "type": "string",
+      "description": "Optional context: symptoms, evidence, workaround, or reasoning. What would a later session need to act on it?"
+    }
+  },
+  "required": [
+    "kind",
+    "title"
+  ]
+}
+```
+
+Source: [`packages/memory/tool-memory/src/index.ts`](../packages/memory/tool-memory/src/index.ts)
+
+### `memory_resolve`
+
+Mark one active ledger record resolved with a short note naming what fixed it.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "The record id, e.g. `mem-ab12cd34`."
+    },
+    "note": {
+      "type": "string",
+      "description": "What resolved the record — the fix, decision, or evidence."
+    }
+  },
+  "required": [
+    "id",
+    "note"
+  ]
+}
+```
+
+Source: [`packages/memory/tool-memory/src/index.ts`](../packages/memory/tool-memory/src/index.ts)
+
+The three memory tools read and write the project ledger; the step injection publishes the active records as a replacement user message and turn-failure capture appends `auto`-origin problem records. Both are bounded by `maxInjectEntries`/`maxDetailChars` and gated on the `memory_record` tool being visible to the agent.
+
+<a id="deepseek-aidsh-tool-toolbox"></a>
+
+## `@deepseek-ai/dsh-tool-toolbox`
+
+### `toolbox_list`
+
+List the active tools in the project toolbox with their versions and schemas.
+
+```json
+{
+  "type": "object",
+  "properties": {}
+}
+```
+
+Source: [`packages/extensions/tool-toolbox/src/index.ts`](../packages/extensions/tool-toolbox/src/index.ts)
+
+### `toolbox_publish`
+
+Publish one tool version into the persistent project toolbox. The program is the body of an async function executed with `args` (the validated call arguments) at call time through the sandboxed code runtime; it must `return` a JSON value. Publishing a name that already has an active version replaces it (the old version stays in history). The tool becomes callable in this session and is mounted automatically in every later session on this project.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Tool name: 3-64 chars, lowercase letters/digits/underscores, starting with a letter."
+    },
+    "description": {
+      "type": "string",
+      "description": "One-line model-facing description of what the tool does and when to use it."
+    },
+    "parameters": {
+      "description": "Parameter map: { paramName: { type: \"string\"|\"number\"|\"integer\"|\"boolean\", description?: string, enum?: string[], required?: true } }."
+    },
+    "program": {
+      "type": "string",
+      "description": "Async function body; `args` holds the validated arguments; return a JSON value."
+    }
+  },
+  "required": [
+    "name",
+    "description",
+    "parameters",
+    "program"
+  ]
+}
+```
+
+Source: [`packages/extensions/tool-toolbox/src/index.ts`](../packages/extensions/tool-toolbox/src/index.ts)
+
+### `toolbox_retire`
+
+Retire the active version of one project toolbox tool; it stops being callable and is unmounted.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "The tool name whose active version is removed."
+    }
+  },
+  "required": [
+    "name"
+  ]
+}
+```
+
+Source: [`packages/extensions/tool-toolbox/src/index.ts`](../packages/extensions/tool-toolbox/src/index.ts)
+
+The three toolbox tools manage the durable library; mounted library tools execute their stored programs through the code-runtime seam and are catalogued only through their stored schemas, so the fixed catalog lists the management tools.
+
+<a id="deepseek-aidsh-tool-refinery"></a>
+
+## `@deepseek-ai/dsh-tool-refinery`
+
+### `refinery_list`
+
+List the active improvement proposals in the project refinery stream.
+
+```json
+{
+  "type": "object",
+  "properties": {}
+}
+```
+
+Source: [`packages/extensions/tool-refinery/src/index.ts`](../packages/extensions/tool-refinery/src/index.ts)
+
+### `refinery_run`
+
+Run one background improvement-proposal author for this project. Reads the unresolved problems from the project memory ledger, spawns a read-only analyst subagent that investigates the workspace, and persists one structured improvement proposal to the durable refinery stream. Proposals are never applied automatically — a human reviews and settles them. Use when the user asks for self-improvement analysis, or after recording problems worth a fix proposal.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "focus": {
+      "type": "string",
+      "description": "Optional focus hint steering the author toward one area or problem."
+    }
+  }
+}
+```
+
+Source: [`packages/extensions/tool-refinery/src/index.ts`](../packages/extensions/tool-refinery/src/index.ts)
+
+### `refinery_settle`
+
+Settle one active improvement proposal: `applied` after the improvement landed (name what changed), or `discarded` when it was rejected or became moot. An `applied` settlement that changed source code or configuration cannot hot-load into the running process; the result says whether a restart is recommended and you must relay that to the user.
+
+```json
+{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "The proposal id, e.g. `prop-ab12cd34`."
+    },
+    "status": {
+      "type": "string",
+      "description": "applied | discarded.",
+      "enum": [
+        "applied",
+        "discarded"
+      ]
+    },
+    "note": {
+      "type": "string",
+      "description": "What applied the proposal, or why it was discarded."
+    },
+    "restartRecommended": {
+      "type": "boolean",
+      "description": "Whether the running process should restart to load the applied change; defaults true for source/config changes, false for pure data or documentation edits."
+    }
+  },
+  "required": [
+    "id",
+    "status",
+    "note"
+  ]
+}
+```
+
+Source: [`packages/extensions/tool-refinery/src/index.ts`](../packages/extensions/tool-refinery/src/index.ts)
+
+The refinery tools read and write the proposal stream; `refinery_run` starts a read-only author subagent whose structured result is persisted. The catalog mount uses a mock provider because the schema harvest runs no child.
 
 <a id="deepseek-aidsh-tool-session-query"></a>
 

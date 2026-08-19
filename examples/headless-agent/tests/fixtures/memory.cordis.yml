@@ -1,0 +1,43 @@
+# Keyless memory-overlay smoke: the full CLI base with the real DeepSeek
+# adapter disabled and a mock LLM, plus the memory pair. Loader launch
+# resolution mirrors cli.cordis.yml.
+
+- id: memory-mock-llm
+  name: './memory-mock-llm.ts'
+
+- id: base
+  name: '@deepseek-ai/cordis-plugin-include'
+  config:
+    path: ../../cordis.yml
+    patches:
+      - id: llm-deepseek
+        name: '@deepseek-ai/dsh-llm-deepseek'
+        disabled: true
+      - id: agent-spine
+        name: '@deepseek-ai/dsh-agent-spine-demo'
+        config:
+          agents:
+            - id: main
+              provider: memory-mock
+              model: memory-mock
+              cwd: !!js process.cwd()
+          workspaceContext: false
+          dshHome: './.dsh-home'
+          skills:
+            filesystem:
+              agentsHome: './.agents-home'
+          persona: 'Keyless memory smoke.'
+      - id: persistence
+        name: '@deepseek-ai/dsh-session-persistence-jsonl'
+        config:
+          root: './.sessions'
+
+- id: memory
+  name: '@deepseek-ai/dsh-memory'
+  config:
+    path: !!js "`${process.cwd()}/.dsh-memory/ledger.jsonl`"
+
+- id: tool-memory
+  name: '@deepseek-ai/dsh-tool-memory'
+  config:
+    autoCaptureFailures: true

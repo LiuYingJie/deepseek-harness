@@ -51,5 +51,8 @@
 | [client-modules.md](client-modules.md) | Web 插件表：`dsh.client` 声明、`WebBootGraph` 线上组合、bundle 路由与 index 转换 |
 | [session-projection.md](session-projection.md) | 投影 seam：`SessionProjectionMap`、纯函数 `ProjectionDefinition` 单元、`ProjectionSnapshot` 的一致切面、变更馈送 |
 | [session-telemetry.md](session-telemetry.md) | 对外会话上报能力 seam：`SessionTelemetryRecord`/`SessionTelemetrySeverity`、`SessionTelemetrySink` 约定和 `session-telemetry/record` 脱敏 waterfall |
+| [memory.md](memory.md) | 项目记忆台账：`MemoryRecord` 种类/来源、`open`/`resolve` JSONL 事件折叠、跨进程文件锁与 `ctx.memory` 服务 |
+| [toolbox.md](toolbox.md) | 持久项目工具库：`ToolboxRecord` 工具版本、`publish`/`retire` JSONL 事件折叠、跨进程文件锁与 `ctx.toolbox` 服务 |
+| [refinery.md](refinery.md) | 改进提案流：`RefineryProposal` 结算注记、`propose`/`settle` JSONL 事件折叠、跨进程文件锁与 `ctx.refinery` 服务 |
 
 > 这些页面上的类型声明及其 JSDoc 与源码等价，并由 `pnpm run verify-type-equiv` 检查漂移（见 [development.md](../development.md#documenting-types-verbatim-ts-type-equiv)）。普通块保留完整声明；`public-api` 块保留去除实现体的公开 class 声明。Cordis 服务与事件使用每页生成的 **Cordis API** 小节。

@@ -882,6 +882,31 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
     ],
   },
   {
+    key: 'memory',
+    summary: 'Memory service (`ctx.memory`): one durable project ledger.',
+    description: 'Memory service (`ctx.memory`): one durable project ledger. Writes serialize through the cross-process file lock; the in-process fold is refreshed under the lock before each append so concurrent writers never fold a stale prefix.',
+    methods: [
+      {
+        signature: 'async snapshot(): Promise<MemoryLedgerState>',
+        description: 'Snapshot of the folded ledger state. Every snapshot re-reads and re-folds the stream: the ledger is a cross-session, externally editable file, so a cached fold would hide both external edits and corruption.',
+        parameters: [],
+        returns: 'active records in insertion order plus the total event count.',
+      },
+      {
+        signature: 'async add(input: MemoryAddInput): Promise<MemoryRecord>',
+        description: 'Append one `open` event.',
+        parameters: [{ name: 'input', description: 'record fields; `id` and `createdAt` are minted here.' }],
+        returns: 'the persisted record.',
+      },
+      {
+        signature: 'async resolve(input: MemoryResolveInput): Promise<MemoryRecord | undefined>',
+        description: 'Append one `resolve` event.',
+        parameters: [{ name: 'input', description: 'record id and resolution note.' }],
+        returns: 'the resolved record with its annotation, or `undefined` when the id is unknown or already resolved.',
+      },
+    ],
+  },
+  {
     key: 'messageFeedback',
     summary: 'Storage-domain sidecar service.',
     description: 'Storage-domain sidecar service. It inspects persisted Session history and never creates or resumes an Agent or Session.',
@@ -960,6 +985,31 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Select whether plan mode should be active. Between turns the method appends the change immediately because no in-turn pre-step will run until another prompt starts a turn. The open-turn fold is the idle signal: agent status stays `running` through post-turn checkpointing, when no further in-turn pre-step runs. During an open turn the selection remains pending until the next accepted in-turn pre-step. Repeated selection of the current or already-pending state is a no-op.',
         parameters: [{ name: 'agent', description: 'The agent to switch.' }, { name: 'active', description: 'Whether plan mode should be active.' }],
         returns: 'what happened: `committed` (logged now), `queued` (awaiting the next accepted in-turn pre-step), `cancelled` (an opposite pending selection was cleared; the logged state already matches), or `noop` (already in that state).',
+      },
+    ],
+  },
+  {
+    key: 'refinery',
+    summary: 'Refinery service (`ctx.refinery`): one durable project proposal stream.',
+    description: 'Refinery service (`ctx.refinery`): one durable project proposal stream. Writes serialize through the cross-process file lock; the in-process fold is refreshed under the lock before each append so concurrent writers never fold a stale prefix.',
+    methods: [
+      {
+        signature: 'async snapshot(): Promise<RefineryState>',
+        description: 'Snapshot of the folded stream state. Every snapshot re-reads and re-folds the stream: it is a cross-session, externally editable file, so a cached fold would hide both external edits and corruption.',
+        parameters: [],
+        returns: 'active proposals in insertion order plus the total event count.',
+      },
+      {
+        signature: 'async propose(input: RefineryProposeInput): Promise<RefineryProposal>',
+        description: 'Append one `propose` event.',
+        parameters: [{ name: 'input', description: 'proposal fields; `id` and `createdAt` are minted here.' }],
+        returns: 'the persisted proposal.',
+      },
+      {
+        signature: 'async settle(input: RefinerySettleInput): Promise<RefineryProposal | undefined>',
+        description: 'Append one `settle` event.',
+        parameters: [{ name: 'input', description: 'proposal id, terminal status, and settlement note.' }],
+        returns: 'the settled proposal with its annotation, or `undefined` when the id is unknown or already settled.',
       },
     ],
   },
@@ -1850,6 +1900,31 @@ export const SERVICE_API: readonly ServiceApiEntry[] = [
         description: 'Heuristically price one model-visible message (instance face of the pure `estimateMessage` export from `estimate.ts`).',
         parameters: [{ name: 'message', description: 'message to price without mutation.' }],
         returns: 'content and role-framing tokens under the fixed service heuristic.',
+      },
+    ],
+  },
+  {
+    key: 'toolbox',
+    summary: 'Toolbox service (`ctx.toolbox`): one durable project tool library.',
+    description: 'Toolbox service (`ctx.toolbox`): one durable project tool library. Writes serialize through the cross-process file lock; the in-process fold is refreshed under the lock before each append so concurrent writers never fold a stale prefix.',
+    methods: [
+      {
+        signature: 'async snapshot(): Promise<ToolboxState>',
+        description: 'Snapshot of the folded library state. Every snapshot re-reads and re-folds the stream: the library is a cross-session, externally editable file, so a cached fold would hide both external edits and corruption.',
+        parameters: [],
+        returns: 'the active version per tool name plus the total event count.',
+      },
+      {
+        signature: 'async publish(input: ToolboxPublishInput): Promise<ToolboxRecord>',
+        description: 'Append one `publish` event, retiring any active version of the same name.',
+        parameters: [{ name: 'input', description: 'schema, program, and authorship; `id` and `createdAt` are minted here.' }],
+        returns: 'the persisted version record.',
+      },
+      {
+        signature: 'async retire(name: string): Promise<boolean>',
+        description: 'Append one `retire` event removing the active version of one tool name.',
+        parameters: [{ name: 'name', description: 'the tool name whose active version is removed.' }],
+        returns: 'whether an active version was removed.',
       },
     ],
   },
@@ -3362,6 +3437,30 @@ export const TYPE_API: readonly TypeApiEntry[] = [
     declaration: 'export interface ManualCompactAgentContext extends CompactionAgentContext {\n    runMaintenance<T>(task: (signal: AbortSignal) => Promise<T>): Promise<T>;\n}',
   },
   {
+    name: 'MemoryAddInput',
+    declaration: 'export interface MemoryAddInput {\n    readonly kind: MemoryRecordKind;\n    readonly title: string;\n    readonly detail?: string;\n    readonly origin?: MemoryRecordOrigin;\n    readonly sessionId?: string;\n}',
+  },
+  {
+    name: 'MemoryLedgerState',
+    declaration: 'export interface MemoryLedgerState {\n    readonly active: readonly MemoryRecord[];\n    readonly total: number;\n}',
+  },
+  {
+    name: 'MemoryRecord',
+    declaration: 'export interface MemoryRecord {\n    readonly id: string;\n    readonly kind: MemoryRecordKind;\n    readonly title: string;\n    readonly detail?: string;\n    readonly origin: MemoryRecordOrigin;\n    readonly createdAt: number;\n    readonly sessionId?: string;\n    readonly resolved?: {\n        at: number;\n        note: string;\n        sessionId?: string;\n    };\n}',
+  },
+  {
+    name: 'MemoryRecordKind',
+    declaration: 'export type MemoryRecordKind = \'problem\' | \'decision\' | \'lesson\';',
+  },
+  {
+    name: 'MemoryRecordOrigin',
+    declaration: 'export type MemoryRecordOrigin = \'agent\' | \'auto\' | \'human\';',
+  },
+  {
+    name: 'MemoryResolveInput',
+    declaration: 'export interface MemoryResolveInput {\n    readonly id: string;\n    readonly note: string;\n    readonly sessionId?: string;\n}',
+  },
+  {
     name: 'Message',
     declaration: 'export interface Message {\n    readonly id: MessageId;\n    readonly role: \'system\' | \'user\' | \'assistant\';\n    readonly content: ContentBlock[];\n    readonly source: MessageSource;\n}',
   },
@@ -3576,6 +3675,26 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'RedactedSecret',
     declaration: 'export interface RedactedSecret {\n    path: string[];\n    set: boolean;\n}',
+  },
+  {
+    name: 'RefineryProposal',
+    declaration: 'export interface RefineryProposal {\n    readonly id: string;\n    readonly title: string;\n    readonly body: string;\n    readonly addresses: readonly string[];\n    readonly createdAt: number;\n    readonly sessionId?: string;\n    readonly settled?: {\n        status: RefineryProposalStatus;\n        at: number;\n        note: string;\n    };\n}',
+  },
+  {
+    name: 'RefineryProposalStatus',
+    declaration: 'export type RefineryProposalStatus = \'proposed\' | \'applied\' | \'discarded\';',
+  },
+  {
+    name: 'RefineryProposeInput',
+    declaration: 'export interface RefineryProposeInput {\n    readonly title: string;\n    readonly body: string;\n    readonly addresses?: readonly string[];\n    readonly sessionId?: string;\n}',
+  },
+  {
+    name: 'RefinerySettleInput',
+    declaration: 'export interface RefinerySettleInput {\n    readonly id: string;\n    readonly status: RefineryProposalStatus;\n    readonly note: string;\n}',
+  },
+  {
+    name: 'RefineryState',
+    declaration: 'export interface RefineryState {\n    readonly active: readonly RefineryProposal[];\n    readonly total: number;\n}',
   },
   {
     name: 'RequestContext',
@@ -4340,6 +4459,30 @@ export const TYPE_API: readonly TypeApiEntry[] = [
   {
     name: 'TokenUsage',
     declaration: 'export interface TokenUsage {\n    inputTokens: number;\n    outputTokens: number;\n    cacheReadTokens?: number;\n    cacheWriteTokens?: number;\n    reasoningTokens?: number;\n}',
+  },
+  {
+    name: 'ToolboxOrigin',
+    declaration: 'export type ToolboxOrigin = \'agent\' | \'human\';',
+  },
+  {
+    name: 'ToolboxParameterSpec',
+    declaration: 'export interface ToolboxParameterSpec {\n    readonly type: string;\n    readonly description?: string;\n    readonly enum?: readonly string[];\n    readonly required?: boolean;\n}',
+  },
+  {
+    name: 'ToolboxPublishInput',
+    declaration: 'export interface ToolboxPublishInput {\n    readonly schema: ToolboxToolSchema;\n    readonly program: string;\n    readonly origin?: ToolboxOrigin;\n    readonly sessionId?: string;\n}',
+  },
+  {
+    name: 'ToolboxRecord',
+    declaration: 'export interface ToolboxRecord {\n    readonly id: string;\n    readonly schema: ToolboxToolSchema;\n    readonly program: string;\n    readonly origin: ToolboxOrigin;\n    readonly createdAt: number;\n    readonly sessionId?: string;\n    readonly superseded?: {\n        at: number;\n        by: string;\n    };\n}',
+  },
+  {
+    name: 'ToolboxState',
+    declaration: 'export interface ToolboxState {\n    readonly tools: readonly {\n        readonly name: string;\n        readonly version: ToolboxRecord;\n    }[];\n    readonly total: number;\n}',
+  },
+  {
+    name: 'ToolboxToolSchema',
+    declaration: 'export interface ToolboxToolSchema {\n    readonly name: string;\n    readonly description: string;\n    readonly parameters: Readonly<Record<string, ToolboxParameterSpec>>;\n}',
   },
   {
     name: 'ToolCallKind',

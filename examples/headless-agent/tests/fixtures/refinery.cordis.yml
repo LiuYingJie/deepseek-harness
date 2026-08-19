@@ -1,0 +1,57 @@
+# Keyless refinery-overlay smoke: the full CLI base with the real DeepSeek
+# adapter disabled and a mock LLM, plus the refinery pair. The mock model
+# calls refinery_run with a mock subagent provider that returns a structured
+# proposal; the durable stream gains it.
+
+- id: refinery-mock-llm
+  name: './refinery-mock-llm.ts'
+
+- id: refinery-mock-subagent
+  name: './refinery-mock-subagent.ts'
+
+- id: base
+  name: '@deepseek-ai/cordis-plugin-include'
+  config:
+    path: ../../cordis.yml
+    patches:
+      - id: llm-deepseek
+        name: '@deepseek-ai/dsh-llm-deepseek'
+        disabled: true
+      - id: agent-spine
+        name: '@deepseek-ai/dsh-agent-spine-demo'
+        config:
+          agents:
+            - id: main
+              provider: refinery-mock
+              model: refinery-mock
+              cwd: !!js process.cwd()
+          workspaceContext: false
+          dshHome: './.dsh-home'
+          skills:
+            filesystem:
+              agentsHome: './.agents-home'
+          persona: 'Keyless refinery smoke.'
+      - id: persistence
+        name: '@deepseek-ai/dsh-session-persistence-jsonl'
+        config:
+          root: './.sessions'
+
+- id: memory
+  name: '@deepseek-ai/dsh-memory'
+  config:
+    path: !!js "`${process.cwd()}/.dsh-refinery/ledger.jsonl`"
+
+- id: tool-memory
+  name: '@deepseek-ai/dsh-tool-memory'
+  config:
+    autoCaptureFailures: true
+
+- id: refinery
+  name: '@deepseek-ai/dsh-refinery'
+  config:
+    path: !!js "`${process.cwd()}/.dsh-refinery/proposals.jsonl`"
+
+- id: tool-refinery
+  name: '@deepseek-ai/dsh-tool-refinery'
+  config:
+    provider: refinery-smoke
