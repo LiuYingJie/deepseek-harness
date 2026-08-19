@@ -10,3 +10,7 @@ Model-facing tools over the live cordis runtime the agent itself runs inside: in
 | [`cordis-host-runner/`](cordis-host-runner/README.md) | Definition registry, the `node:vm` sandbox for host halves, and the request-run round trip | provides `ctx.dynamicCordisRunner` |
 | [`cordis-client-runner/`](cordis-client-runner/README.md) | Browser half of a dual-half package: evaluates the definition into a live browser plugin and answers the run request | client face; provides the browser `ctx.dynamicCordisRunner` |
 | [`ui-cordis/`](ui-cordis/README.md) | Browser surfaces: the frame-wide panel that operates every definition, and the read-only define card | client face; registers slots |
+| [`toolbox/`](toolbox/README.md) | Project-level durable tool library: JSONL fold behind the code-runtime seam | provides `ctx.toolbox` |
+| [`tool-toolbox/`](tool-toolbox/README.md) | Model-facing publish/retire/list tools plus the persistent tool mount | registers on `ctx.tools` |
+| [`refinery/`](refinery/README.md) | Project-level durable improvement-proposal stream: JSONL fold of propose/settle events | provides `ctx.refinery` |
+| [`tool-refinery/`](tool-refinery/README.md) | Model-facing run/list/settle tools plus the read-only proposal-author subagent | registers on `ctx.tools` |

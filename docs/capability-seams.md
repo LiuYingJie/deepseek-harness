@@ -100,6 +100,15 @@ flowchart LR
   svc_skills["ctx.skills<br/>Skill provider registry"]
   pkg_skill_badge["skill-badge"]
   pkg_skill_filesystem["skill-filesystem"]
+  pkg_memory["memory"]
+  svc_memory["ctx.memory<br/>Project memory ledger"]
+  pkg_tool_memory["tool-memory"]
+  pkg_toolbox["toolbox"]
+  svc_toolbox["ctx.toolbox<br/>Persistent project toolbox"]
+  pkg_tool_toolbox["tool-toolbox"]
+  pkg_refinery["refinery"]
+  svc_refinery["ctx.refinery<br/>Improvement proposal stream"]
+  pkg_tool_refinery["tool-refinery"]
   svc_agents["ctx.agents<br/>Agent service"]
   pkg_acp["acp"]
   pkg_agent_default_model["agent-default-model"]
@@ -233,11 +242,13 @@ flowchart LR
   pkg_llm_replay --> svc_llm
   pkg_lsp --> svc_lsp
   pkg_lsp_local --> svc_lsp
+  pkg_memory --> svc_memory
   pkg_message_feedback --> svc_messageFeedback
   pkg_modules --> svc_clientModules
   pkg_permission_presets --> svc_permissionPresets
   pkg_plan_mode --> svc_planMode
   pkg_pwsh_local --> svc_shell
+  pkg_refinery --> svc_refinery
   pkg_sandbox --> svc_sandbox
   pkg_sandbox_local --> svc_sandbox
   pkg_sandbox_policy --> svc_sandboxPolicy
@@ -282,6 +293,7 @@ flowchart LR
   pkg_terminal --> svc_terminals
   pkg_terminal_bash --> svc_terminals
   pkg_token_meter --> svc_tokenMeter
+  pkg_toolbox --> svc_toolbox
   pkg_tools --> svc_tools
   pkg_typert_registry --> svc_typert
   pkg_user_questions --> svc_userQuestions
@@ -328,6 +340,8 @@ flowchart LR
   svc_llm --> pkg_agent_loop
   svc_llm --> pkg_compaction_basic
   svc_lsp --> pkg_tool_lsp
+  svc_memory --> pkg_tool_memory
+  svc_refinery --> pkg_tool_refinery
   svc_sandbox --> pkg_bash_sandbox
   svc_sandbox --> pkg_terminal_bash
   svc_sandboxPolicy --> pkg_bash_sandbox
@@ -386,6 +400,7 @@ flowchart LR
   svc_terminals --> pkg_tool_terminal
   svc_tokenMeter --> pkg_compaction_basic
   svc_toolResultPruner --> pkg_compaction_basic
+  svc_toolbox --> pkg_tool_toolbox
   svc_tools --> pkg_agent_loop
   svc_tools --> pkg_tool_ask_user
   svc_tools --> pkg_tool_bash
@@ -439,6 +454,9 @@ flowchart LR
 | `ctx.sessionProjections` | `core` | [`session-projection`](../packages/session/session-projection) | - | [`tool-todo`](../packages/todo/tool-todo), [`session-title`](../packages/session/session-title), [`host-apiproxy`](../packages/host/apiproxy) | - | Domains register state-driven fold units; the eager drive keeps per-session watermark states and api-proxy serves baselines and pushes changed values. |
 | `ctx.sessionProjectionCache` | `core` | [`session-projection-cache`](../packages/session/session-projection-cache) | - | [`host-apiproxy`](../packages/host/apiproxy) | - | Durably checkpoints projection unit states per session (throttled + turn/end/detach mandatory points) and serves the cold-read ladder: cache row + persistence tail replay, so listings never load full logs. |
 | `ctx.skills` | `seam` | [`skill`](../packages/skill/skill) | [`skill-badge`](../packages/skill/skill-badge), [`skill-filesystem`](../packages/skill/skill-filesystem) | [`tool-skill`](../packages/skill/tool-skill) | - | Merges provider skill catalogs; tool-skill renders the session-prefix catalog and loads complete skill bodies. |
+| `ctx.memory` | `seam` | [`memory`](../packages/memory/memory) | - | [`tool-memory`](../packages/memory/tool-memory) | - | One append-only JSONL ledger per project root; tool-memory publishes the model-facing tools, step injection, and turn-failure capture. |
+| `ctx.toolbox` | `seam` | [`toolbox`](../packages/extensions/toolbox) | - | [`tool-toolbox`](../packages/extensions/tool-toolbox) | - | One append-only JSONL tool library per project root; tool-toolbox publishes the model-facing management tools and mounts active versions as real tools. |
+| `ctx.refinery` | `seam` | [`refinery`](../packages/extensions/refinery) | - | [`tool-refinery`](../packages/extensions/tool-refinery) | - | One append-only JSONL proposal stream per project root; tool-refinery publishes the management tools and spawns the read-only proposal-author subagent. |
 | `ctx.agents` | `core` | [`agent`](../packages/core/agent) | - | [`agent-loop`](../packages/core/agent-loop), [`acp`](../packages/acp/acp), `subagent-inprocess` | - | Owns live Agent handles, the create/resume factory seam, and process-local initiator propagation. |
 | `ctx.agentDefaultModel` | `core` | [`agent-default-model`](../packages/core/agent-default-model) | - | [`headless`](../packages/bundle/headless), [`host-apiproxy`](../packages/host/apiproxy) | - | Layers the default ModelSelection through settings so direct and Host-backed Agent entry points share one state owner. |
 | `ctx.agentLoop` | `bundle` | [`agent-loop`](../packages/core/agent-loop) | - | [`agent-spine-demo`](../packages/examples/agent-spine-demo) | - | The one concrete loop plugin; extension packages depend on dsh-agent events and services, not on this package. |

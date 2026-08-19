@@ -102,6 +102,15 @@ flowchart LR
   svc_skills["ctx.skills<br/>Skill provider registry"]
   pkg_skill_badge["skill-badge"]
   pkg_skill_filesystem["skill-filesystem"]
+  pkg_memory["memory"]
+  svc_memory["ctx.memory<br/>Project memory ledger"]
+  pkg_tool_memory["tool-memory"]
+  pkg_toolbox["toolbox"]
+  svc_toolbox["ctx.toolbox<br/>Persistent project toolbox"]
+  pkg_tool_toolbox["tool-toolbox"]
+  pkg_refinery["refinery"]
+  svc_refinery["ctx.refinery<br/>Improvement proposal stream"]
+  pkg_tool_refinery["tool-refinery"]
   svc_agents["ctx.agents<br/>Agent service"]
   pkg_acp["acp"]
   pkg_agent_default_model["agent-default-model"]
@@ -235,11 +244,13 @@ flowchart LR
   pkg_llm_replay --> svc_llm
   pkg_lsp --> svc_lsp
   pkg_lsp_local --> svc_lsp
+  pkg_memory --> svc_memory
   pkg_message_feedback --> svc_messageFeedback
   pkg_modules --> svc_clientModules
   pkg_permission_presets --> svc_permissionPresets
   pkg_plan_mode --> svc_planMode
   pkg_pwsh_local --> svc_shell
+  pkg_refinery --> svc_refinery
   pkg_sandbox --> svc_sandbox
   pkg_sandbox_local --> svc_sandbox
   pkg_sandbox_policy --> svc_sandboxPolicy
@@ -284,6 +295,7 @@ flowchart LR
   pkg_terminal --> svc_terminals
   pkg_terminal_bash --> svc_terminals
   pkg_token_meter --> svc_tokenMeter
+  pkg_toolbox --> svc_toolbox
   pkg_tools --> svc_tools
   pkg_typert_registry --> svc_typert
   pkg_user_questions --> svc_userQuestions
@@ -330,6 +342,8 @@ flowchart LR
   svc_llm --> pkg_agent_loop
   svc_llm --> pkg_compaction_basic
   svc_lsp --> pkg_tool_lsp
+  svc_memory --> pkg_tool_memory
+  svc_refinery --> pkg_tool_refinery
   svc_sandbox --> pkg_bash_sandbox
   svc_sandbox --> pkg_terminal_bash
   svc_sandboxPolicy --> pkg_bash_sandbox
@@ -388,6 +402,7 @@ flowchart LR
   svc_terminals --> pkg_tool_terminal
   svc_tokenMeter --> pkg_compaction_basic
   svc_toolResultPruner --> pkg_compaction_basic
+  svc_toolbox --> pkg_tool_toolbox
   svc_tools --> pkg_agent_loop
   svc_tools --> pkg_tool_ask_user
   svc_tools --> pkg_tool_bash
@@ -441,6 +456,9 @@ flowchart LR
 | `ctx.sessionProjections` | `core` | [`session-projection`](../packages/session/session-projection) | - | [`tool-todo`](../packages/todo/tool-todo), [`session-title`](../packages/session/session-title), [`host-apiproxy`](../packages/host/apiproxy) | - | 各领域注册由状态驱动的折叠单元；主动驱动过程维护每个会话的水位状态，api-proxy 提供基线并推送发生变化的值。 |
 | `ctx.sessionProjectionCache` | `core` | [`session-projection-cache`](../packages/session/session-projection-cache) | - | [`host-apiproxy`](../packages/host/apiproxy) | - | 按会话持久保存投影单元状态的检查点（节流检查点，以及轮次／结束／分离时的必选检查点），并提供冷读取阶梯：缓存行加持久化尾部回放，因此列表读取永远不需要加载完整日志。 |
 | `ctx.skills` | `seam` | [`skill`](../packages/skill/skill) | [`skill-badge`](../packages/skill/skill-badge), [`skill-filesystem`](../packages/skill/skill-filesystem) | [`tool-skill`](../packages/skill/tool-skill) | - | 合并提供方的 skill（技能）目录；tool-skill 渲染会话前缀目录，并加载完整的 skill 正文。 |
+| `ctx.memory` | `seam` | [`memory`](../packages/memory/memory) | - | [`tool-memory`](../packages/memory/tool-memory) | - | 每个项目根一条追加式 JSONL 台账；tool-memory 发布模型侧工具、步骤注入与 turn 失败捕获。 |
+| `ctx.toolbox` | `seam` | [`toolbox`](../packages/extensions/toolbox) | - | [`tool-toolbox`](../packages/extensions/tool-toolbox) | - | 每个项目根一条追加式 JSONL 工具库；tool-toolbox 发布模型侧管理工具，并把活跃版本挂载为真实工具。 |
+| `ctx.refinery` | `seam` | [`refinery`](../packages/extensions/refinery) | - | [`tool-refinery`](../packages/extensions/tool-refinery) | - | 每个项目根一条追加式 JSONL 提案流；tool-refinery 发布管理工具，并派生只读的提案编写者 subagent。 |
 | `ctx.agents` | `core` | [`agent`](../packages/core/agent) | - | [`agent-loop`](../packages/core/agent-loop), [`acp`](../packages/acp/acp), `subagent-inprocess` | - | 拥有实时 Agent 句柄、创建／恢复工厂 seam，以及进程本地的发起方传播。 |
 | `ctx.agentDefaultModel` | `core` | [`agent-default-model`](../packages/core/agent-default-model) | - | [`headless`](../packages/bundle/headless), [`host-apiproxy`](../packages/host/apiproxy) | - | 通过 settings 分层默认 `ModelSelection`，让直接入口与 Host 支撑的 Agent 入口共享同一个状态所有者。 |
 | `ctx.agentLoop` | `bundle` | [`agent-loop`](../packages/core/agent-loop) | - | [`agent-spine-demo`](../packages/examples/agent-spine-demo) | - | 唯一的具体循环插件；扩展包依赖 dsh-agent 的事件和服务，而不依赖此包。 |

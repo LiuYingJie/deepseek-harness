@@ -49,6 +49,7 @@ const SENTENCE_MODEL_EXPERIENCE: Readonly<Record<string, SentenceContract>> = {
   'packages/shell/bash-local': { kind: 'indirect', reason: 'The executor backend delegates model rendering to dsh-tool-bash.' },
   'packages/shell/pwsh-local': { kind: 'indirect', reason: 'The executor backend delegates model rendering to dsh-tool-pwsh.' },
   'packages/code-runtime/code-runtime': { kind: 'indirect', reason: 'The service interface delegates model rendering to Code Mode in dsh-tools.' },
+  'packages/extensions/refinery': { kind: 'none', reason: 'The stream service registers no prompt, schema, or result; dsh-tool-refinery owns every model-facing surface over the proposal stream.' },
   'packages/core/agent-tool-presentation': { kind: 'indirect', reason: 'The row only selects between the two projections dsh-tools owns; it registers no prompt, schema, or result of its own.' },
   'packages/code-runtime/code-runtime-worker-thread': { kind: 'indirect', reason: 'The worker backend delegates model rendering to Code Mode in dsh-tools.' },
   'packages/client/ui-agent-preset': { kind: 'indirect', reason: 'Browser-side settings row; the preset it selects owns every model-facing effect.' },

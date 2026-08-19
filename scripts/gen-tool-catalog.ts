@@ -55,6 +55,12 @@ import * as ToolSchedule from '@deepseek-ai/dsh-schedule'
 import Lsp from '@deepseek-ai/dsh-lsp'
 import * as ToolLsp from '@deepseek-ai/dsh-tool-lsp'
 import * as ToolSkill from '@deepseek-ai/dsh-tool-skill'
+import MemoryService from '@deepseek-ai/dsh-memory'
+import * as ToolMemory from '@deepseek-ai/dsh-tool-memory'
+import ToolboxService from '@deepseek-ai/dsh-toolbox'
+import * as ToolToolbox from '@deepseek-ai/dsh-tool-toolbox'
+import RefineryService from '@deepseek-ai/dsh-refinery'
+import * as ToolRefinery from '@deepseek-ai/dsh-tool-refinery'
 import * as ToolSessionQuery from '@deepseek-ai/dsh-tool-session-query'
 import * as ToolTasks from '@deepseek-ai/dsh-tool-jobs'
 import * as ToolTodo from '@deepseek-ai/dsh-tool-todo'
@@ -420,6 +426,48 @@ const TOOL_PACKAGES: ToolPackage[] = [
       })
       await ctx.plugin(ToolSkill)
     },
+  },
+  {
+    pkg: '@deepseek-ai/dsh-tool-memory',
+    dir: 'tool-memory',
+    source: 'packages/memory/tool-memory/src/index.ts',
+    requires: ['ctx.tools', 'ctx.memory'],
+    writes: ['tool/call', 'tool/result', 'user/message ledger publications via agent/pre-step'],
+    async mount(ctx) {
+      await ctx.plugin(MemoryService, { path: resolve(root, '.tmp/tool-catalog/ledger.jsonl') })
+      await ctx.plugin(ToolMemory)
+    },
+    note:
+      'The three memory tools read and write the project ledger; the step injection publishes the active records as a replacement user message and turn-failure capture appends `auto`-origin problem records. Both are bounded by `maxInjectEntries`/`maxDetailChars` and gated on the `memory_record` tool being visible to the agent.',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-tool-toolbox',
+    dir: 'tool-toolbox',
+    source: 'packages/extensions/tool-toolbox/src/index.ts',
+    requires: ['ctx.tools', 'ctx.toolbox', 'ctx.codeRuntime at call time (worker-thread backend)'],
+    writes: ['tool/call', 'tool/result'],
+    async mount(ctx) {
+      await ctx.plugin(ToolboxService, { path: resolve(root, '.tmp/tool-catalog/toolbox.jsonl') })
+      await ctx.plugin(ToolToolbox, { mountOnLoad: false })
+    },
+    note:
+      'The three toolbox tools manage the durable library; mounted library tools execute their stored programs through the code-runtime seam and are catalogued only through their stored schemas, so the fixed catalog lists the management tools.',
+  },
+  {
+    pkg: '@deepseek-ai/dsh-tool-refinery',
+    dir: 'tool-refinery',
+    source: 'packages/extensions/tool-refinery/src/index.ts',
+    requires: ['ctx.tools', 'ctx.refinery', 'ctx.subagents with outputSchema/toolFilter/persona', 'ctx.memory'],
+    writes: ['tool/call', 'tool/result', 'refinery stream events through ctx.refinery during execution'],
+    async mount(ctx) {
+      await ctx.plugin(RefineryService, { path: resolve(root, '.tmp/tool-catalog/proposals.jsonl') })
+      await ctx.plugin(MemoryService, { path: resolve(root, '.tmp/tool-catalog/ledger.jsonl') })
+      await ctx.plugin(SubagentRuntime)
+      registerCatalogSubagentProvider(ctx, 'refinery-catalog-mock')
+      await ctx.plugin(ToolRefinery, { provider: 'refinery-catalog-mock' })
+    },
+    note:
+      'The refinery tools read and write the proposal stream; `refinery_run` starts a read-only author subagent whose structured result is persisted. The catalog mount uses a mock provider because the schema harvest runs no child.',
   },
   {
     pkg: '@deepseek-ai/dsh-tool-session-query',

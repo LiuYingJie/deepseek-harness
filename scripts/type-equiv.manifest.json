@@ -1366,6 +1366,51 @@
       "source": "packages/spill/spill/src/types.ts"
     },
     {
+      "doc": "docs/subsystems/memory.md",
+      "symbol": "MemoryRecord",
+      "source": "packages/memory/memory/src/index.ts"
+    },
+    {
+      "doc": "docs/subsystems/memory.md",
+      "symbol": "MemoryLedgerEvent",
+      "source": "packages/memory/memory/src/index.ts"
+    },
+    {
+      "doc": "docs/subsystems/memory.md",
+      "symbol": "MemoryLedgerState",
+      "source": "packages/memory/memory/src/index.ts"
+    },
+    {
+      "doc": "docs/subsystems/toolbox.md",
+      "symbol": "ToolboxRecord",
+      "source": "packages/extensions/toolbox/src/index.ts"
+    },
+    {
+      "doc": "docs/subsystems/toolbox.md",
+      "symbol": "ToolboxEvent",
+      "source": "packages/extensions/toolbox/src/index.ts"
+    },
+    {
+      "doc": "docs/subsystems/toolbox.md",
+      "symbol": "ToolboxState",
+      "source": "packages/extensions/toolbox/src/index.ts"
+    },
+    {
+      "doc": "docs/subsystems/refinery.md",
+      "symbol": "RefineryProposal",
+      "source": "packages/extensions/refinery/src/index.ts"
+    },
+    {
+      "doc": "docs/subsystems/refinery.md",
+      "symbol": "RefineryEvent",
+      "source": "packages/extensions/refinery/src/index.ts"
+    },
+    {
+      "doc": "docs/subsystems/refinery.md",
+      "symbol": "RefineryState",
+      "source": "packages/extensions/refinery/src/index.ts"
+    },
+    {
       "doc": "docs/subsystems/workflow.md",
       "symbol": "WorkflowStartRequest",
       "source": "packages/workflow/workflow/src/runtime-types.ts"
